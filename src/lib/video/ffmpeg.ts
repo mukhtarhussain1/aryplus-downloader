@@ -28,6 +28,7 @@ export class FFmpegJob extends EventEmitter {
       '-y', // Overwrite
       '-i', this.inputUrl,
       '-c', 'copy', // Stream copy (no re-encoding)
+      '-bsf:a', 'aac_adtstoasc',
       '-movflags', '+faststart',
       '-progress', 'pipe:1',
       this.outputPath

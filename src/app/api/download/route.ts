@@ -29,10 +29,19 @@ export async function GET(req: NextRequest) {
       '-reconnect_delay_max', '5',
       '-i', streamUrl,
       '-c', 'copy',
+      '-bsf:a', 'aac_adtstoasc',
       '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
       '-f', 'mp4',
       'pipe:1'
     ]);
+
+    let stderrBuffer = '';
+
+    // Drain stderr so FFmpeg's OS pipe buffer does not fill up and block streaming
+    ffmpeg.stderr.on('data', (chunk: Buffer) => {
+      const text = chunk.toString();
+      stderrBuffer = (stderrBuffer + text).slice(-2000);
+    });
 
     const stream = new ReadableStream({
       start(controller) {
@@ -45,6 +54,11 @@ export async function GET(req: NextRequest) {
         ffmpeg.on('error', (err) => {
           console.error('[FFmpeg Stream Error]:', err);
           controller.error(err);
+        });
+        ffmpeg.on('close', (code) => {
+          if (code !== 0 && code !== null) {
+            console.error(`[FFmpeg Stream Exited with code ${code}]:`, stderrBuffer);
+          }
         });
       },
       cancel() {
