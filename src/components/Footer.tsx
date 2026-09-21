@@ -79,8 +79,8 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-slate-100 text-xs text-slate-400">
           <p>© {new Date().getFullYear()} ARY Plus Downloader. All rights reserved.</p>
-          <p className="flex items-center gap-1.5">
-            <span>Built with Next.js, Tailwind CSS &amp; FFmpeg</span>
+          <p className="flex items-center gap-1.5 font-medium text-slate-500">
+            <span>Developed By <strong className="text-slate-800 font-semibold">Mukhtar Hussain</strong></span>
           </p>
         </div>
       </div>
