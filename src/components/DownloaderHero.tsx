@@ -68,26 +68,6 @@ export function DownloaderHero({
 }: DownloaderHeroProps) {
   const localInputRef = useRef<HTMLInputElement>(null);
   const effectiveInputRef = inputRef || localInputRef;
-  const [downloadStarted, setDownloadStarted] = React.useState(false);
-
-  const handleDirectDownload = () => {
-    if (!selectedStream || !metadata) return;
-    const downloadUrl = `/api/download?streamUrl=${encodeURIComponent(selectedStream)}&title=${encodeURIComponent(metadata.title)}`;
-
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.setAttribute('download', `${metadata.title || 'aryplus-video'}.mp4`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    setDownloadStarted(true);
-  };
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    setDownloadStarted(false);
-    onAnalyze(e);
-  };
 
   const handlePaste = async () => {
     try {
@@ -149,7 +129,7 @@ export function DownloaderHero({
         <div className="bg-white border border-slate-200/90 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-xl shadow-slate-200/60 transition-all text-left relative">
           
           {/* Form Input */}
-          <form onSubmit={handleFormSubmit} className="relative mb-4">
+          <form onSubmit={onAnalyze} className="relative mb-4">
             <div className="flex flex-col sm:flex-row items-stretch gap-3">
               <div className="relative flex-1 group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-rose-600 transition-colors">
@@ -285,8 +265,8 @@ export function DownloaderHero({
             </div>
           )}
 
-          {/* Quality Selection Grid (When download not yet triggered) */}
-          {metadata && !downloadStarted && (
+          {/* Quality Selection Grid (When not downloading) */}
+          {metadata && !jobId && (
             <div className="mt-6 pt-6 border-t border-slate-100 animate-in fade-in">
               <div className="flex items-center justify-between mb-3">
                 <label className="font-bold text-slate-800 text-sm tracking-wide flex items-center gap-2">
@@ -327,7 +307,7 @@ export function DownloaderHero({
                             isSelected ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-300 bg-white'
                           }`}
                         >
-                          {isSelected && <IconCheck className="w-3 h-3 stroke-[3]" size={12} />}
+                          {isSelected && <IconCheck className="w-3 h-3 stroke-[3]" />}
                         </div>
                       </div>
 
@@ -346,48 +326,12 @@ export function DownloaderHero({
               </div>
 
               <button
-                onClick={handleDirectDownload}
+                onClick={onStartDownload}
                 className="w-full bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-rose-600/20 flex justify-center items-center gap-2.5 text-base cursor-pointer active:scale-[0.99]"
               >
-                <IconDownload className="w-5 h-5 text-white" size={20} />
-                <span>Download MP4 to Device</span>
+                <IconDownload className="w-5 h-5 text-white" />
+                <span>Start MP4 Download</span>
               </button>
-            </div>
-          )}
-
-          {/* Download Started Feedback State */}
-          {metadata && downloadStarted && (
-            <div className="mt-6 pt-6 border-t border-slate-100 animate-in fade-in">
-              <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-6 text-center shadow-2xs">
-                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-3">
-                  <IconCheck className="w-6 h-6 stroke-[2.5]" size={24} />
-                </div>
-                <h3 className="font-extrabold text-slate-900 text-lg mb-1">
-                  Download Started Directly to Your Device!
-                </h3>
-                <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
-                  Your browser has initiated the download for <strong className="text-slate-800">{metadata.title}</strong> directly into your local storage.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button
-                    onClick={handleDirectDownload}
-                    className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold py-3 px-5 rounded-xl text-sm transition-colors shadow-2xs cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <IconDownload className="w-4 h-4 text-slate-600" size={16} />
-                    <span>Download Again</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setDownloadStarted(false);
-                      onReset();
-                    }}
-                    className="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-5 rounded-xl text-sm transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
-                  >
-                    <IconRefresh className="w-4 h-4 text-slate-300" size={16} />
-                    <span>Download Another Episode</span>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
