@@ -40,10 +40,14 @@ export class AryPlusResolver implements MediaResolver {
       // Intercept network requests to find the HLS playlists
       page.on('request', request => {
         const reqUrl = request.url();
-        if (reqUrl.includes('.m3u8') && isAllowedMediaDomain(reqUrl)) {
-          if (config.DEBUG_MEDIA_RESOLUTION) {
-            console.log(`[ARY] HLS candidate found: ${reqUrl}`);
-          }
+        // Match any .m3u8 playlist, excluding ads
+        if (
+          reqUrl.includes('.m3u8') &&
+          !reqUrl.includes('google') &&
+          !reqUrl.includes('doubleclick') &&
+          !reqUrl.includes('analytics')
+        ) {
+          console.log(`[ARY] HLS candidate found: ${reqUrl}`);
           if (!m3u8Candidates.includes(reqUrl)) {
             m3u8Candidates.push(reqUrl);
           }
@@ -51,11 +55,22 @@ export class AryPlusResolver implements MediaResolver {
       });
 
       try {
-        await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 35000 });
+        await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 45000 });
         
-        // Attempt to click play button if the player is waiting for user gesture
+        // Wait a few seconds for initial React mount
+        await page.waitForTimeout(2000);
+
+        // Attempt to trigger playback programmatically and via UI buttons
         try {
-          const playBtn = page.locator('.rmp-overlay-play-button, button.play, [aria-label="Play"], .vjs-big-play-button').first();
+          await page.evaluate(() => {
+            const v = document.querySelector('video');
+            if (v) {
+              v.muted = true;
+              v.play().catch(() => {});
+            }
+          }).catch(() => {});
+
+          const playBtn = page.locator('.rmp-overlay-play-button, button.play, [aria-label="Play"], .vjs-big-play-button, .rmp-play').first();
           if (await playBtn.count() > 0) {
             await playBtn.click({ timeout: 2000 }).catch(() => {});
           }
@@ -63,19 +78,20 @@ export class AryPlusResolver implements MediaResolver {
           // ignore play button click error
         }
 
-        // Wait up to 10 seconds, polling until at least one stream is intercepted
-        for (let i = 0; i < 20; i++) {
+        // Wait up to 25 seconds (Render free tier has shared CPU), polling until stream is intercepted
+        for (let i = 0; i < 50; i++) {
           if (m3u8Candidates.length > 0) break;
           await page.waitForTimeout(500);
         }
 
         pageTitle = await page.title();
-      } catch (err) {
-        console.error(`[ARY] Page load error (ignoring if we found streams):`, err);
+      } catch (err: any) {
+        console.error(`[ARY] Page load error:`, err?.message || err);
       }
 
       if (m3u8Candidates.length === 0) {
-        throw new Error('Could not find an accessible video stream.');
+        const titleInfo = pageTitle ? ` (Page title: "${pageTitle}")` : '';
+        throw new Error(`Could not find an accessible video stream${titleInfo}. The video might be geo-restricted or require login.`);
       }
 
       // Often ARY has a master playlist (adp.m3u8 or similar) or direct media playlists (video_10_0.m3u8)
