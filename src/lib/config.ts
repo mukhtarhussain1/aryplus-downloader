@@ -20,7 +20,11 @@ export function isValidAryPlusUrl(inputUrl: string): boolean {
 export function isAllowedMediaDomain(inputUrl: string): boolean {
   try {
     const url = new URL(inputUrl);
-    return config.ALLOWED_MEDIA_DOMAINS.includes(url.hostname);
+    const hostname = url.hostname.toLowerCase();
+    if (config.ALLOWED_MEDIA_DOMAINS.includes(hostname)) return true;
+    if (hostname.endsWith('.aryzap.com') || hostname === 'aryzap.com') return true;
+    if (hostname.endsWith('.aryplus.tv') || hostname === 'aryplus.tv') return true;
+    return false;
   } catch (error) {
     return false;
   }

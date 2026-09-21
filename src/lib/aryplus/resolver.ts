@@ -15,8 +15,24 @@ export class AryPlusResolver implements MediaResolver {
         console.log(`[ARY] Resolving URL via Playwright: ${url.toString()}`);
       }
       
-      browser = await chromium.launch({ headless: true });
-      page = await browser.newPage();
+      browser = await chromium.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-first-run',
+          '--autoplay-policy=no-user-gesture-required'
+        ]
+      });
+
+      const context = await browser.newContext({
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 720 },
+      });
+
+      page = await context.newPage();
       
       const m3u8Candidates: string[] = [];
       let pageTitle = '';
@@ -35,9 +51,24 @@ export class AryPlusResolver implements MediaResolver {
       });
 
       try {
-        await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
-        // Wait a bit for the video player API requests to trigger
-        await page.waitForTimeout(5000); 
+        await page.goto(url.toString(), { waitUntil: 'domcontentloaded', timeout: 35000 });
+        
+        // Attempt to click play button if the player is waiting for user gesture
+        try {
+          const playBtn = page.locator('.rmp-overlay-play-button, button.play, [aria-label="Play"], .vjs-big-play-button').first();
+          if (await playBtn.count() > 0) {
+            await playBtn.click({ timeout: 2000 }).catch(() => {});
+          }
+        } catch (e) {
+          // ignore play button click error
+        }
+
+        // Wait up to 10 seconds, polling until at least one stream is intercepted
+        for (let i = 0; i < 20; i++) {
+          if (m3u8Candidates.length > 0) break;
+          await page.waitForTimeout(500);
+        }
+
         pageTitle = await page.title();
       } catch (err) {
         console.error(`[ARY] Page load error (ignoring if we found streams):`, err);
